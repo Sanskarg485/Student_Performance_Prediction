@@ -22,12 +22,18 @@ st.markdown("""
 
 # ===== SIDEBAR =====
 st.sidebar.title("EduTrack")
-st.sidebar.image(
-    "https://lh3.googleusercontent.com/aida-public/AB6AXuAV9EHmnsMRFUfV3A4yF1NOFhqLjnWoRloJoWyyiPsEJYi5ShWVfObqJJ1svtah3273Srb1gzyVzTRA23QrgN6EoTIGKqIpuCxdJhGVc-8iWNFpIcOpU176B4BqYmlC28ZjHPPV7MkTKZGF8boixd2IATiUA0ajwJleVoN9HCz-8ND6VWRd9Z5CkDKF9pY8h9FGpuTHXMxp_9ZNw_ozJ3FZnk_CCkZUV3gruNRduOizr9cYf-M_vL2_eKCtnFpAhKXuLArG6HU2UdCk",
-    width=80
-)
+
+# --- Profile Picture Upload ---
+st.sidebar.markdown("### Upload Your Profile Picture")
+profile_pic = st.sidebar.file_uploader("Choose a profile picture", type=["png", "jpg", "jpeg"])
+if profile_pic:
+    st.sidebar.image(profile_pic, width=100)
+else:
+    st.sidebar.info("No profile picture uploaded")
+
 st.sidebar.markdown("**Ishan**  \nB.Tech AIML")
 
+# ===== NAVIGATION TABS =====
 tabs = ["Dashboard", "Academics", "Sports", "Calendar", "Messages", "Settings"]
 selected_tab = st.sidebar.radio("Navigate", tabs)
 st.sidebar.markdown("---")
