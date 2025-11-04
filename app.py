@@ -15,9 +15,11 @@ st.markdown("""
     <style>
         body { font-family: 'Lexend', sans-serif; background-color: #F2F2F2; }
         .sidebar .sidebar-content { background-color: #FFFFFF; padding: 20px; }
-        .main-title { font-size: 2.2rem; font-weight: bold; color: #2E86C1; }
-        .metric-card { background-color: #FFFFFF; border-radius: 12px; padding: 20px; border: 1px solid #E0E0E0; text-align: center; box-shadow: 2px 2px 10px rgba(0,0,0,0.05);}
-        .progress-label { font-weight: bold; }
+        .main-title { font-size: 2.4rem; font-weight: bold; color: #2E86C1; margin-bottom: 20px; }
+        .metric-card { background-color: #FFFFFF; border-radius: 12px; padding: 20px; border: 1px solid #E0E0E0; text-align: center; box-shadow: 2px 2px 10px rgba(0,0,0,0.1);}
+        .progress-label { font-weight: bold; margin-top: 10px; margin-bottom: 5px; }
+        .assignment-table th { background-color: #2E86C1; color: white; padding: 8px; text-align: left;}
+        .assignment-table td { padding: 8px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -47,9 +49,9 @@ df = None
 # ===== DASHBOARD TAB =====
 if selected_tab == "Dashboard":
     st.markdown("<p class='main-title'>Student Overview</p>", unsafe_allow_html=True)
-    st.info("Upload CSV in Academics tab to see detailed data")
+    
+    st.info("Upload a CSV in Academics tab to see full details")
 
-    # Display placeholders (dynamic later after CSV upload)
     col1, col2, col3 = st.columns(3)
     with col1: st.metric("Overall GPA", "0.0")
     with col2: st.metric("Class Rank", "0")
@@ -59,7 +61,7 @@ if selected_tab == "Dashboard":
 elif selected_tab == "Academics":
     st.markdown("<p class='main-title'>Academic Performance</p>", unsafe_allow_html=True)
 
-    uploaded_file = st.file_uploader("Upload a CSV file for analysis", type=["csv"])
+    uploaded_file = st.file_uploader("Upload CSV file for analysis", type=["csv"])
     
     if uploaded_file:
         df = pd.read_csv(uploaded_file)
@@ -68,14 +70,14 @@ elif selected_tab == "Academics":
 
         numeric_cols = df.select_dtypes(include=['float64', 'int64'])
 
-        # --- Dynamic Dashboard Metrics ---
+        # --- Dashboard Metrics ---
         col1, col2, col3 = st.columns(3)
         overall_gpa = numeric_cols.get('GPA', pd.Series([0])).mean()
         attendance_rate = numeric_cols.get('Attendance', pd.Series([0])).mean()
         class_rank = numeric_cols.get('Rank', pd.Series([0])).mean()
-        with col1: st.metric("Overall GPA", f"{overall_gpa:.2f}")
-        with col2: st.metric("Class Rank", f"{int(class_rank)}")
-        with col3: st.metric("Attendance Rate", f"{attendance_rate:.0f}%")
+        with col1: st.metric("Overall GPA", f"{overall_gpa:.2f}", delta="+0.1")
+        with col2: st.metric("Class Rank", f"{int(class_rank)}", delta="-1")
+        with col3: st.metric("Attendance Rate", f"{attendance_rate:.0f}%", delta="+2%")
 
         # --- Model Predictions ---
         if rf_model and xgb_model and not numeric_cols.empty:
@@ -122,4 +124,4 @@ elif selected_tab == "Academics":
         # --- Recent Assignments (if available) ---
         if all(col in df.columns for col in ["Assignment", "Subject", "Due Date", "Score", "Status"]):
             st.markdown("### 🗂️ Recent Assignments")
-            st.dataframe(df[["Assignment", "Subject", "Due Date", "Score", "Status"]], use_container_width=True)
+            st.table(df[["Assignment", "Subject", "Due Date", "Score", "Status"]])
