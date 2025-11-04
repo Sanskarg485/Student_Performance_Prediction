@@ -17,4 +17,11 @@ A fully responsive **Streamlit-based Student Performance Dashboard** that visual
 ---
 
 ## 🧩 Project Structure
-
+EduTrack/
+│
+├── app.py # Main Streamlit app
+├── rf_model.pkl # Trained Random Forest model
+├── xgb_model.pkl # Trained XGBoost model
+├── requirements.txt # Python dependencies
+├── README.md # Project documentation
+└── assets/ # (Optional) Any images or icons used
