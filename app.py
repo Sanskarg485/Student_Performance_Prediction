@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-import os
 from model import rf_model, xgb_model
 
 # ===== PAGE CONFIG =====
@@ -32,100 +31,100 @@ st.sidebar.markdown("**Ishan**  \nB.Tech AIML")
 tabs = ["Dashboard", "Academics", "Sports", "Calendar", "Messages", "Settings"]
 selected_tab = st.sidebar.radio("Navigate", tabs)
 st.sidebar.markdown("---")
-st.sidebar.button("Log Out")
+if st.sidebar.button("Log Out"):
+    st.warning("You have been logged out!")
 
 # ===== TAB CONTENT =====
+uploaded_file = None
+df = None
 if selected_tab == "Academics":
     st.markdown("<p class='main-title'>Academic Performance</p>", unsafe_allow_html=True)
-    
-    # --- Metrics ---
-    col1, col2, col3 = st.columns(3)
-    with col1: st.metric("Overall GPA", "3.85", "+0.12 from last semester")
-    with col2: st.metric("Class Rank", "8th", "+2 from last semester")
-    with col3: st.metric("Attendance Rate", "98%", "-1% from last semester")
-
-    # --- File Upload for CSV ---
-    st.markdown("### 📤 Upload Performance Records")
     uploaded_file = st.file_uploader("Upload a CSV file for analysis", type=["csv"])
     if uploaded_file:
         df = pd.read_csv(uploaded_file)
         st.success("File uploaded successfully!")
         st.dataframe(df.head())
 
-        # --- Predict GPA using models ---
-        if rf_model and xgb_model:
+# ===== DISPLAY DATA AND METRICS =====
+if uploaded_file and df is not None:
+    numeric_cols = df.select_dtypes(include=['float64', 'int64'])
+
+    if selected_tab == "Academics":
+        # --- Metrics ---
+        col1, col2, col3 = st.columns(3)
+        overall_gpa = numeric_cols.get('GPA', pd.Series([0])).mean()
+        attendance_rate = numeric_cols.get('Attendance', pd.Series([0])).mean()
+        class_rank = numeric_cols.get('Rank', pd.Series([0])).mean()
+        with col1: st.metric("Overall GPA", f"{overall_gpa:.2f}")
+        with col2: st.metric("Class Rank", f"{int(class_rank)}")
+        with col3: st.metric("Attendance Rate", f"{attendance_rate:.0f}%")
+
+        # --- Model Predictions ---
+        if rf_model and xgb_model and not numeric_cols.empty:
             try:
-                # Select only numeric columns
-                input_data = df.select_dtypes(include=['float64', 'int64']).values
+                input_data = numeric_cols.values
                 rf_pred = rf_model.predict(input_data)
                 xgb_pred = xgb_model.predict(input_data)
                 avg_pred = (rf_pred + xgb_pred) / 2
                 st.subheader("📊 Predicted Performance (Average GPA)")
-                st.write(avg_pred)
+                st.dataframe(pd.DataFrame(avg_pred, columns=["Predicted GPA"]))
             except Exception as e:
                 st.warning(f"Model prediction failed: {e}")
+
+        # --- GPA Over Time Chart ---
+        st.markdown("### 📈 GPA Over Time")
+        if "GPA" in df.columns:
+            gpa_values = df["GPA"]
         else:
-            st.warning("Models are not loaded. Predictions unavailable.")
+            gpa_values = avg_pred if 'avg_pred' in locals() else numeric_cols.iloc[:, 0]
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(y=gpa_values, mode='lines+markers', line=dict(color="#4A90E2", width=3)))
+        fig.update_layout(height=300, xaxis_title="Semester", yaxis_title="GPA", margin=dict(l=0, r=0, t=20, b=0))
+        st.plotly_chart(fig, use_container_width=True)
 
-    # --- GPA Over Time Chart ---
-    st.markdown("### 📈 GPA Over Time")
-    gpa_values = [3.7, 3.8, 3.6, 3.4, 3.9, 3.5, 3.85]
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(y=gpa_values, mode='lines+markers', line=dict(color="#4A90E2", width=3)))
-    fig.update_layout(
-        height=300,
-        xaxis_title="Semester",
-        yaxis_title="GPA",
-        margin=dict(l=0, r=0, t=20, b=0)
-    )
-    st.plotly_chart(fig, use_container_width=True)
+        # --- Subject Performance ---
+        st.markdown("### 🧮 Performance by Subject")
+        for col in numeric_cols.columns:
+            if col.lower() not in ["gpa", "attendance", "rank"]:
+                score = numeric_cols[col].mean()
+                st.write(f"**{col}** - {score:.1f}%")
+                st.progress(min(int(score), 100))
 
-    # --- Subject Performance ---
-    st.markdown("### 🧮 Performance by Subject")
-    subject_scores = {
-        "DSA": 92,
-        "Deep Learning": 85,
-        "DAA": 88,
-        "OS": 78,
-        "IOT": 98
-    }
-    for subject, score in subject_scores.items():
-        st.write(f"**{subject}** - {score}%")
-        st.progress(score)
+        # --- Assignments (Dynamic from CSV if available) ---
+        if all(col in df.columns for col in ["Assignment", "Subject", "Due Date", "Score", "Status"]):
+            st.markdown("### 🗂️ Recent Assignments")
+            st.dataframe(df[["Assignment", "Subject", "Due Date", "Score", "Status"]], use_container_width=True)
 
-    # --- Recent Assignments ---
-    st.markdown("### 🗂️ Recent Assignments")
-    assignments = pd.DataFrame({
-        "Assignment": [
-            "Types Of OS",
-            "Tree",
-            "Regression",
-            "Classification",
-            "Impressionism Study Sketch"
-        ],
-        "Subject": ["Mathematics", "English", "Science", "History", "Art"],
-        "Due Date": ["May 20, 2024", "May 18, 2024", "May 15, 2024", "May 25, 2024", "May 28, 2024"],
-        "Score": ["95/100", "88/100", "72/100", "--/--", "--/--"],
-        "Status": ["Graded", "Graded", "Graded", "Submitted", "Upcoming"]
-    })
-    st.dataframe(assignments, use_container_width=True)
+    elif selected_tab == "Dashboard":
+        st.title("📊 Dashboard Overview")
+        st.metric("Average GPA", f"{numeric_cols.get('GPA', pd.Series([0])).mean():.2f}")
+        st.metric("Subjects Count", len(numeric_cols.columns))
 
-elif selected_tab == "Dashboard":
-    st.title("📊 Dashboard Overview")
-    st.write("Quick summary of your academic and extracurricular progress.")
+    elif selected_tab == "Sports":
+        st.title("🏅 Sports Activity")
+        if "Sports" in df.columns:
+            st.dataframe(df[["Sports"]])
+        else:
+            st.info("No sports data found in CSV.")
 
-elif selected_tab == "Sports":
-    st.title("🏅 Sports Activity")
-    st.write("Track your sports achievements and attendance here.")
+    elif selected_tab == "Calendar":
+        st.title("🗓️ Academic Calendar")
+        if all(col in df.columns for col in ["Event", "Date"]):
+            st.dataframe(df[["Event", "Date"]])
+        else:
+            st.info("No calendar events found in CSV.")
 
-elif selected_tab == "Calendar":
-    st.title("🗓️ Academic Calendar")
-    st.write("View upcoming classes, exams, and events.")
+    elif selected_tab == "Messages":
+        st.title("✉️ Messages")
+        if all(col in df.columns for col in ["Message", "Date"]):
+            st.dataframe(df[["Date", "Message"]])
+        else:
+            st.info("No messages found in CSV.")
 
-elif selected_tab == "Messages":
-    st.title("✉️ Messages")
-    st.write("Check your messages and announcements here.")
+    elif selected_tab == "Settings":
+        st.title("⚙️ Settings")
+        st.write("Manage your account, preferences, and themes here.")
 
-elif selected_tab == "Settings":
-    st.title("⚙️ Settings")
-    st.write("Manage your account, preferences, and themes here.")
+else:
+    if selected_tab == "Academics":
+        st.info("Upload a CSV in Academics tab to display all metrics and charts.")
