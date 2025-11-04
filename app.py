@@ -1,61 +1,32 @@
 import streamlit as st
 import pandas as pd
-import pickle
 import plotly.graph_objects as go
-from io import StringIO
+import os
+from model import rf_model, xgb_model
 
-# ========== PAGE CONFIG ==========
+# ===== PAGE CONFIG =====
 st.set_page_config(
     page_title="EduTrack - Academic Performance",
     page_icon="🎓",
     layout="wide"
 )
 
-# ========== THEME & STYLE ==========
+# ===== THEME & STYLE =====
 st.markdown("""
     <style>
-        body {
-            font-family: 'Lexend', sans-serif;
-            background-color: #F2F2F2;
-        }
-        .sidebar .sidebar-content {
-            background-color: #FFFFFF;
-        }
-        .main-title {
-            font-size: 2rem;
-            font-weight: bold;
-        }
-        .metric-card {
-            background-color: #FFFFFF;
-            border-radius: 12px;
-            padding: 20px;
-            border: 1px solid #E0E0E0;
-            text-align: center;
-        }
-        .upload-box {
-            border: 2px dashed #E0E0E0;
-            border-radius: 12px;
-            padding: 30px;
-            background-color: #FFFFFF;
-            text-align: center;
-        }
-        .progress-bar {
-            background-color: #E0E0E0;
-            border-radius: 9999px;
-            height: 10px;
-            width: 100%;
-        }
-        .progress-fill {
-            background-color: #4A90E2;
-            height: 10px;
-            border-radius: 9999px;
-        }
+        body { font-family: 'Lexend', sans-serif; background-color: #F2F2F2; }
+        .sidebar .sidebar-content { background-color: #FFFFFF; }
+        .main-title { font-size: 2rem; font-weight: bold; }
+        .metric-card { background-color: #FFFFFF; border-radius: 12px; padding: 20px; border: 1px solid #E0E0E0; text-align: center; }
     </style>
 """, unsafe_allow_html=True)
 
-# ========== SIDEBAR ==========
+# ===== SIDEBAR =====
 st.sidebar.title("EduTrack")
-st.sidebar.image("https://lh3.googleusercontent.com/aida-public/AB6AXuAV9EHmnsMRFUfV3A4yF1NOFhqLjnWoRloJoWyyiPsEJYi5ShWVfObqJJ1svtah3273Srb1gzyVzTRA23QrgN6EoTIGKqIpuCxdJhGVc-8iWNFpIcOpU176B4BqYmlC28ZjHPPV7MkTKZGF8boixd2IATiUA0ajwJleVoN9HCz-8ND6VWRd9Z5CkDKF9pY8h9FGpuTHXMxp_9ZNw_ozJ3FZnk_CCkZUV3gruNRduOizr9cYf-M_vL2_eKCtnFpAhKXuLArG6HU2UdCk", width=80)
+st.sidebar.image(
+    "https://lh3.googleusercontent.com/aida-public/AB6AXuAV9EHmnsMRFUfV3A4yF1NOFhqLjnWoRloJoWyyiPsEJYi5ShWVfObqJJ1svtah3273Srb1gzyVzTRA23QrgN6EoTIGKqIpuCxdJhGVc-8iWNFpIcOpU176B4BqYmlC28ZjHPPV7MkTKZGF8boixd2IATiUA0ajwJleVoN9HCz-8ND6VWRd9Z5CkDKF9pY8h9FGpuTHXMxp_9ZNw_ozJ3FZnk_CCkZUV3gruNRduOizr9cYf-M_vL2_eKCtnFpAhKXuLArG6HU2UdCk",
+    width=80
+)
 st.sidebar.markdown("**Ishan**  \nB.Tech AIML")
 
 tabs = ["Dashboard", "Academics", "Sports", "Calendar", "Messages", "Settings"]
@@ -63,26 +34,15 @@ selected_tab = st.sidebar.radio("Navigate", tabs)
 st.sidebar.markdown("---")
 st.sidebar.button("Log Out")
 
-# ========== LOAD MODELS ==========
-with open("C:\Users\dtcgr\Desktop\CodeSmasher\Student_Performance_Prediction\rf_model.pkl", "rb") as f:
-    rf_model = pickle.load(f)
-
-with open("C:\Users\dtcgr\Desktop\CodeSmasher\Student_Performance_Prediction\xgb_model.pkl", "rb") as f:
-    xgb_model = pickle.load(f)
-
-# ========== TAB CONTENT ==========
+# ===== TAB CONTENT =====
 if selected_tab == "Academics":
     st.markdown("<p class='main-title'>Academic Performance</p>", unsafe_allow_html=True)
-    st.write("A detailed overview of David's academic progress.")
-
+    
     # --- Metrics ---
     col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Overall GPA", "3.85", "+0.12 from last semester")
-    with col2:
-        st.metric("Class Rank", "8th", "+2 from last semester")
-    with col3:
-        st.metric("Attendance Rate", "98%", "-1% from last semester")
+    with col1: st.metric("Overall GPA", "3.85", "+0.12 from last semester")
+    with col2: st.metric("Class Rank", "8th", "+2 from last semester")
+    with col3: st.metric("Attendance Rate", "98%", "-1% from last semester")
 
     # --- File Upload for CSV ---
     st.markdown("### 📤 Upload Performance Records")
@@ -92,15 +52,20 @@ if selected_tab == "Academics":
         st.success("File uploaded successfully!")
         st.dataframe(df.head())
 
-        # Example: Predict GPA using both models
-        try:
-            rf_pred = rf_model.predict(df)
-            xgb_pred = xgb_model.predict(df)
-            avg_pred = (rf_pred + xgb_pred) / 2
-            st.subheader("📊 Predicted Performance (Average GPA)")
-            st.write(avg_pred)
-        except Exception as e:
-            st.warning("Model prediction failed. Ensure CSV columns match model training features.")
+        # --- Predict GPA using models ---
+        if rf_model and xgb_model:
+            try:
+                # Select only numeric columns
+                input_data = df.select_dtypes(include=['float64', 'int64']).values
+                rf_pred = rf_model.predict(input_data)
+                xgb_pred = xgb_model.predict(input_data)
+                avg_pred = (rf_pred + xgb_pred) / 2
+                st.subheader("📊 Predicted Performance (Average GPA)")
+                st.write(avg_pred)
+            except Exception as e:
+                st.warning(f"Model prediction failed: {e}")
+        else:
+            st.warning("Models are not loaded. Predictions unavailable.")
 
     # --- GPA Over Time Chart ---
     st.markdown("### 📈 GPA Over Time")
@@ -118,24 +83,24 @@ if selected_tab == "Academics":
     # --- Subject Performance ---
     st.markdown("### 🧮 Performance by Subject")
     subject_scores = {
-        "Mathematics": 92,
-        "English": 85,
-        "Science": 88,
-        "History": 78,
-        "Art": 98
+        "DSA": 92,
+        "Deep Learning": 85,
+        "DAA": 88,
+        "OS": 78,
+        "IOT": 98
     }
     for subject, score in subject_scores.items():
         st.write(f"**{subject}** - {score}%")
-        st.progress(score / 100)
+        st.progress(score)
 
     # --- Recent Assignments ---
     st.markdown("### 🗂️ Recent Assignments")
     assignments = pd.DataFrame({
         "Assignment": [
-            "Algebra II: Chapter 5 Test",
-            "The Great Gatsby Essay",
-            "Photosynthesis Lab Report",
-            "World War II Presentation",
+            "Types Of OS",
+            "Tree",
+            "Regression",
+            "Classification",
             "Impressionism Study Sketch"
         ],
         "Subject": ["Mathematics", "English", "Science", "History", "Art"],
@@ -164,4 +129,3 @@ elif selected_tab == "Messages":
 elif selected_tab == "Settings":
     st.title("⚙️ Settings")
     st.write("Manage your account, preferences, and themes here.")
-
