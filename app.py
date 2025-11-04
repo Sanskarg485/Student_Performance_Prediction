@@ -32,30 +32,42 @@ else:
     st.sidebar.info("No profile picture uploaded")
 
 st.sidebar.markdown("**Ishan**  \nB.Tech AIML")
-
-# ===== NAVIGATION TABS =====
-tabs = ["Dashboard", "Academics", "Sports", "Calendar", "Messages", "Settings"]
-selected_tab = st.sidebar.radio("Navigate", tabs)
-st.sidebar.markdown("---")
 if st.sidebar.button("Log Out"):
     st.warning("You have been logged out!")
 
-# ===== TAB CONTENT =====
+# ===== NAVIGATION TABS =====
+tabs = ["Dashboard", "Academics"]
+selected_tab = st.sidebar.radio("Navigate", tabs)
+
+# ===== DATA VARIABLES =====
 uploaded_file = None
 df = None
-if selected_tab == "Academics":
+
+# ===== DASHBOARD TAB =====
+if selected_tab == "Dashboard":
+    st.markdown("<p class='main-title'>Student Overview</p>", unsafe_allow_html=True)
+    
+    st.info("Upload CSV in Academics tab to see detailed data")
+    
+    # Display default/basic data (if CSV not uploaded yet)
+    col1, col2, col3 = st.columns(3)
+    with col1: st.metric("Overall GPA", "3.85")
+    with col2: st.metric("Class Rank", "8th")
+    with col3: st.metric("Attendance Rate", "98%")
+
+# ===== ACADEMICS TAB =====
+elif selected_tab == "Academics":
     st.markdown("<p class='main-title'>Academic Performance</p>", unsafe_allow_html=True)
+    
     uploaded_file = st.file_uploader("Upload a CSV file for analysis", type=["csv"])
+    
     if uploaded_file:
         df = pd.read_csv(uploaded_file)
         st.success("File uploaded successfully!")
         st.dataframe(df.head())
 
-# ===== DISPLAY DATA AND METRICS =====
-if uploaded_file and df is not None:
-    numeric_cols = df.select_dtypes(include=['float64', 'int64'])
-
-    if selected_tab == "Academics":
+        numeric_cols = df.select_dtypes(include=['float64', 'int64'])
+        
         # --- Metrics ---
         col1, col2, col3 = st.columns(3)
         overall_gpa = numeric_cols.get('GPA', pd.Series([0])).mean()
@@ -96,41 +108,7 @@ if uploaded_file and df is not None:
                 st.write(f"**{col}** - {score:.1f}%")
                 st.progress(min(int(score), 100))
 
-        # --- Assignments (Dynamic from CSV if available) ---
+        # --- Assignments (if available) ---
         if all(col in df.columns for col in ["Assignment", "Subject", "Due Date", "Score", "Status"]):
             st.markdown("### 🗂️ Recent Assignments")
             st.dataframe(df[["Assignment", "Subject", "Due Date", "Score", "Status"]], use_container_width=True)
-
-    elif selected_tab == "Dashboard":
-        st.title("📊 Dashboard Overview")
-        st.metric("Average GPA", f"{numeric_cols.get('GPA', pd.Series([0])).mean():.2f}")
-        st.metric("Subjects Count", len(numeric_cols.columns))
-
-    elif selected_tab == "Sports":
-        st.title("🏅 Sports Activity")
-        if "Sports" in df.columns:
-            st.dataframe(df[["Sports"]])
-        else:
-            st.info("No sports data found in CSV.")
-
-    elif selected_tab == "Calendar":
-        st.title("🗓️ Academic Calendar")
-        if all(col in df.columns for col in ["Event", "Date"]):
-            st.dataframe(df[["Event", "Date"]])
-        else:
-            st.info("No calendar events found in CSV.")
-
-    elif selected_tab == "Messages":
-        st.title("✉️ Messages")
-        if all(col in df.columns for col in ["Message", "Date"]):
-            st.dataframe(df[["Date", "Message"]])
-        else:
-            st.info("No messages found in CSV.")
-
-    elif selected_tab == "Settings":
-        st.title("⚙️ Settings")
-        st.write("Manage your account, preferences, and themes here.")
-
-else:
-    if selected_tab == "Academics":
-        st.info("Upload a CSV in Academics tab to display all metrics and charts.")
