@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
+import plotly.express as px
 from model import rf_model, xgb_model
 
 # ===== PAGE CONFIG =====
@@ -85,30 +86,52 @@ with col3:
 # --- GPA Over Time ---
 if df is not None and "GPA" in df.columns:
     st.markdown("<div class='section-title'>📈 GPA Over Time</div>", unsafe_allow_html=True)
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(
+    fig_gpa = go.Figure()
+    fig_gpa.add_trace(go.Scatter(
         y=df["GPA"],
         mode='lines+markers',
         line=dict(color="#2E86C1", width=4),
         marker=dict(size=10, color="#F39C12")
     ))
-    fig.update_layout(
+    fig_gpa.update_layout(
         height=350,
         xaxis_title="Semester",
         yaxis_title="GPA",
         margin=dict(l=0, r=0, t=20, b=0),
         plot_bgcolor="#F4F6F9"
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig_gpa, use_container_width=True)
 
 # --- Subject Performance ---
 if numeric_cols is not None:
-    st.markdown("<div class='section-title'>🧮 Performance by Subject</div>", unsafe_allow_html=True)
-    for col in numeric_cols.columns:
-        if col.lower() not in ["gpa", "attendance", "rank"]:
-            score = numeric_cols[col].mean()
-            st.markdown(f"<div class='progress-label'>{col}: {score:.1f}%</div>", unsafe_allow_html=True)
-            st.progress(min(int(score), 100))
+    st.markdown("<div class='section-title'>🧮 Subject Performance</div>", unsafe_allow_html=True)
+    subject_cols = [col for col in numeric_cols.columns if col.lower() not in ["gpa", "attendance", "rank"]]
+    subject_scores = numeric_cols[subject_cols].mean()
+    
+    col1, col2 = st.columns([2,1])
+    with col1:
+        fig_subj = px.bar(
+            subject_scores, 
+            x=subject_scores.index, 
+            y=subject_scores.values, 
+            text=subject_scores.values,
+            labels={'x':'Subject', 'y':'Score'},
+            color=subject_scores.values,
+            color_continuous_scale='Blues'
+        )
+        fig_subj.update_layout(
+            height=400,
+            margin=dict(l=0, r=0, t=20, b=20),
+            coloraxis_showscale=False,
+            yaxis=dict(range=[0,100])
+        )
+        st.plotly_chart(fig_subj, use_container_width=True)
+    
+    with col2:
+        st.markdown("### Progress Bars")
+        for subj, score in subject_scores.items():
+            st.markdown(f"<div class='progress-label'>{subj}: {score:.1f}%</div>", unsafe_allow_html=True)
+            st.progress(min(int(score),100))
 
 # --- Model Predictions ---
 if rf_model and xgb_model and numeric_cols is not None and not numeric_cols.empty:
@@ -122,7 +145,8 @@ if rf_model and xgb_model and numeric_cols is not None and not numeric_cols.empt
     except Exception as e:
         st.warning(f"Model prediction failed: {e}")
 
-# --- Assignments (if available) ---
-if df is not None and all(col in df.columns for col in ["Assignment", "Subject", "Due Date", "Score", "Status"]):
-    st.markdown("<div class='section-title'>🗂️ Recent Assignments</div>", unsafe_allow_html=True)
-    st.table(df[["Assignment", "Subject", "Due Date", "Score", "Status"]])
+# --- Academic Report ---
+if df is not None:
+    st.markdown("<div class='section-title'>📚 Academic Report</div>", unsafe_allow_html=True)
+    if all(col in df.columns for col in ["Assignment", "Subject", "Due Date", "Score", "Status"]):
+        st.table(df[["Assignment", "Subject", "Due Date", "Score", "Status"]])
